@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aprender é Divertido!</title>
+<meta name="theme-color" content="#7F77DD">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aprender!">
+<link rel="manifest" href="manifest.json">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#f5f5f5;padding:1rem;min-height:100vh;}
+#app{max-width:660px;margin:0 auto;}
+#loading{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:999;}
+#loading span{font-size:48px;}#loading p{font-size:14px;color:#888;}
+.hidden{display:none!important;}
+#login{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:85vh;text-align:center;padding:2rem;}
+#login .icon{font-size:72px;margin-bottom:1rem;}
+#login h1{font-size:26px;font-weight:700;color:#1a1a1a;margin-bottom:8px;}
+#login p{font-size:15px;color:#666;margin-bottom:2rem;line-height:1.6;}
+.gbtn{display:flex;align-items:center;gap:12px;padding:14px 28px;border-radius:12px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-size:16px;font-weight:500;color:#1a1a1a;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.gbtn:hover{border-color:#7F77DD;}
+#topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding:8px 12px;background:#fff;border-radius:12px;border:.5px solid #ddd;}
+.uinfo{display:flex;align-items:center;gap:10px;}
+.uname{font-size:14px;font-weight:500;color:#1a1a1a;}
+.uemail{font-size:11px;color:#aaa;}
+.lbtn{font-size:12px;color:#999;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;}
+.scores{display:flex;justify-content:center;gap:20px;margin-bottom:1.25rem;}
+.sc{text-align:center;}
+.scn{font-size:24px;font-weight:600;color:#1a1a1a;}
+.scl{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;}
+.cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(85px,1fr));gap:8px;margin-bottom:1.25rem;}
+.cat{padding:8px 4px;border-radius:8px;border:1.5px solid #ddd;background:#fff;cursor:pointer;font-size:11px;color:#666;text-align:center;transition:all .15s;position:relative;}
+.cat.active{border-color:#7F77DD;color:#7F77DD;background:#EEEDFE;font-weight:500;}
+.cat.done{border-color:#22C55E;background:#f0fff4;}
+.cat .ci{font-size:22px;display:block;margin-bottom:4px;}
+.cat .ck{position:absolute;top:3px;right:5px;font-size:11px;color:#22C55E;}
+.prog{height:4px;background:#eee;border-radius:4px;margin-bottom:1rem;overflow:hidden;}
+.prog-fill{height:100%;background:#7F77DD;border-radius:4px;transition:width .3s;}
+.card{background:#fff;border:.5px solid #ddd;border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+.qmeta{font-size:12px;color:#aaa;margin-bottom:8px;display:flex;justify-content:space-between;}
+.qtxt{font-size:17px;color:#1a1a1a;font-weight:500;line-height:1.5;margin-bottom:1rem;}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.opt{padding:10px 12px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-size:14px;color:#1a1a1a;text-align:center;transition:all .15s;}
+.opt:hover:not(:disabled){border-color:#7F77DD;color:#7F77DD;}
+.opt.ok{background:#EAF3DE;border-color:#639922;color:#3B6D11;font-weight:500;}
+.opt.no{background:#FCEBEB;border-color:#A32D2D;color:#791F1F;}
+.opt:disabled{cursor:default;}
+.fb{margin-top:1rem;padding:10px 14px;border-radius:8px;font-size:14px;display:none;}
+.fb.show{display:block;}.fb.ok{background:#EAF3DE;color:#3B6D11;}.fb.no{background:#FCEBEB;color:#791F1F;}
+.nxt{display:none;width:100%;margin-top:1rem;padding:10px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-size:14px;color:#1a1a1a;font-weight:500;}
+.nxt.show{display:block;}
+.wtxt{width:100%;min-height:120px;padding:10px 12px;border-radius:8px;border:1px solid #ccc;background:#f9f9f9;font-size:15px;font-family:inherit;resize:vertical;line-height:1.6;}
+.wtxt:focus{outline:none;border-color:#7F77DD;}
+.wcount{font-size:12px;color:#aaa;margin-top:4px;text-align:right;}
+.tip{background:#EEEDFE;border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:13px;color:#534AB7;line-height:1.6;}
+.sbtn{width:100%;margin-top:1rem;padding:10px;border-radius:8px;border:1px solid #AFA9EC;background:#EEEDFE;cursor:pointer;font-size:14px;color:#534AB7;font-weight:500;}
+.sbtn:disabled{opacity:.5;cursor:default;}
+.ltxt{text-align:center;color:#888;font-size:14px;padding:1rem 0;display:none;}
+.aifb{margin-top:1rem;padding:14px;border-radius:8px;background:#f5f5f5;border:.5px solid #ddd;font-size:14px;color:#1a1a1a;line-height:1.7;display:none;}
+.aifb.show{display:block;}
+.result{text-align:center;padding:2rem 1rem;}
+.result h2{font-size:22px;font-weight:600;color:#1a1a1a;margin-bottom:8px;}
+.result p{color:#666;font-size:15px;margin-bottom:1.5rem;}
+.rbtn{padding:10px 24px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer;font-size:15px;font-weight:500;color:#1a1a1a;}
+.rank-row{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:8px;background:#f9f9f9;margin-bottom:6px;}
+.rank-row.me{background:#EEEDFE;}
+.rpos{font-size:18px;width:28px;text-align:center;}
+.rav{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.rinfo{flex:1;}.rname{font-size:14px;font-weight:500;color:#1a1a1a;}.rsub{font-size:11px;color:#888;}
+.rpts{font-size:16px;font-weight:700;color:#7F77DD;}
+.pcard{text-align:center;padding:1.5rem;}
+.pavatarwrap{position:relative;display:inline-block;margin-bottom:12px;}
+.pcambiar{position:absolute;bottom:0;right:0;background:#7F77DD;color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#foto-input{display:none;}
+.pupload{font-size:12px;color:#7F77DD;margin-bottom:8px;min-height:16px;}
+.pname{font-size:20px;font-weight:600;color:#1a1a1a;margin-bottom:4px;}
+.pemail{font-size:13px;color:#888;margin-bottom:1.5rem;}
+.pstats{display:flex;justify-content:center;gap:20px;padding:1rem;background:#f9f9f9;border-radius:10px;margin-bottom:1.5rem;}
+.pst{text-align:center;}.pstn{font-size:22px;font-weight:700;color:#7F77DD;}.pstl{font-size:11px;color:#888;}
+.pcats-done{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}
+.pcatdone{padding:4px 10px;border-radius:20px;background:#EEEDFE;color:#7F77DD;font-size:12px;font-weight:500;}
+#tabs{display:flex;gap:4px;margin-bottom:1.25rem;background:#fff;border-radius:12px;padding:6px;border:.5px solid #ddd;}
+.tab{flex:1;padding:8px 4px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:11px;color:#888;text-align:center;transition:all .15s;}
+.tab .ti{font-size:18px;display:block;margin-bottom:2px;}
+.tab.active{background:#7F77DD;color:#fff;font-weight:500;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="loading"><span>📚</span><p>Carregando...</p></div>
+<div id="login" class="hidden">
+  <div class="icon">📚</div>
+  <h1>Aprender é Divertido!</h1>
+  <p>App educativo para crianças de 7–8 anos<br>com lógica, matemática, ciências e muito mais!</p>
+  <button class="gbtn" onclick="login()">
+    <svg width="22" height="22" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Entrar com Google
+  </button>
+</div>
+<div id="main" class="hidden">
+  <div id="topbar">
+    <div class="uinfo">
+      <div id="uav" onclick="showTab('perfil')" style="cursor:pointer"></div>
+      <div><div class="uname" id="uname"></div><div class="uemail" id="uemail"></div></div>
+    </div>
+    <button class="lbtn" onclick="doLogout()">Sair</button>
+  </div>
+  <div id="tabs">
+    <button class="tab active" onclick="showTab('quiz')"><span class="ti">🎯</span>Quiz</button>
+    <button class="tab" onclick="showTab('ranking')"><span class="ti">🏆</span>Ranking</button>
+    <button class="tab" onclick="showTab('perfil')"><span class="ti">👤</span>Perfil</button>
+  </div>
+  <div id="tab-quiz">
+    <div class="scores">
+      <div class="sc"><div class="scn" id="pts">0</div><div class="scl">Pontos</div></div>
+      <div class="sc"><div class="scn" id="streak">0</div><div class="scl">Seguidas</div></div>
+      <div class="sc"><div class="scn" id="done">0</div><div class="scl">Feitas</div></div>
+    </div>
+    <div class="cats" id="cats"></div>
+    <div class="prog"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+    <div id="quiz"></div>
+  </div>
+  <div id="tab-ranking" class="hidden">
+    <div class="card"><h3 style="font-size:16px;font-weight:600;margin-bottom:1rem">🏆 Top Jogadores</h3><div id="rlist"><p style="color:#aaa;text-align:center;padding:1rem">Carregando...</p></div></div>
+  </div>
+  <div id="tab-perfil" class="hidden">
+    <div class="card pcard">
+      <div class="pavatarwrap">
+        <div id="pav" style="width:80px;height:80px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:48px;border:3px solid #7F77DD;cursor:pointer;" onclick="document.getElementById('foto-input').click()">👤</div>
+        <button class="pcambiar" onclick="document.getElementById('foto-input').click()">📷</button>
+        <input type="file" id="foto-input" accept="image/*" onchange="uploadFoto(this)">
+      </div>
+      <div class="pupload" id="uprogress"></div>
+      <div class="pname" id="pname"></div>
+      <div class="pemail" id="pemail"></div>
+      <div class="pstats">
+        <div class="pst"><div class="pstn" id="ppts">0</div><div class="pstl">Pontos</div></div>
+        <div class="pst"><div class="pstn" id="pdone">0</div><div class="pstl">Respondidas</div></div>
+        <div class="pst"><div class="pstn" id="pcats">0</div><div class="pstl">Categorias</div></div>
+      </div>
+      <div style="font-size:13px;color:#888;margin-bottom:8px">Categorias concluídas:</div>
+      <div class="pcats-done" id="pcatsdone"></div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyC7LNHyQmVUxhHSBJusAe3hDGsIGqbzFvA",
+  authDomain:"aprender-divertido-75833.firebaseapp.com",
+  projectId:"aprender-divertido-75833",
+  storageBucket:"aprender-divertido-75833.firebasestorage.app",
+  messagingSenderId:"1017796327584",
+  appId:"1:1017796327584:web:4531b74f21173c755171c5"
+});
+const auth=firebase.auth(),db=firebase.firestore(),storage=firebase.storage();
+
+const CATS=[
+  {id:'logic',label:'Lógica',icon:'🔷'},
+  {id:'math',label:'Matemática',icon:'➕'},
+  {id:'memory',label:'Memória',icon:'🧠'},
+  {id:'science',label:'Ciências',icon:'🔬'},
+  {id:'geo',label:'Geografia',icon:'🌍'},
+  {id:'pt',label:'Português',icon:'📖'},
+  {id:'en',label:'Inglês',icon:'🇬🇧'},
+  {id:'writing',label:'Redação',icon:'✏️'}
+];
+
+const Q={
+logic:[
+  {q:'Qual vem a seguir? 🔴🔵🔴🔵🔴___',opts:['🔵','🔴','🟡','🟢'],ans:0,exp:'Padrão: vermelho, azul, vermelho, azul...'},
+  {q:'Todos os gatos têm 4 patas. Mimi é gato. Quantas patas tem Mimi?',opts:['2','3','4','5'],ans:2,exp:'Mimi é gato, logo tem 4 patas!'},
+  {q:'Qual não pertence ao grupo? 🍎🍌🥕🍇',opts:['Maçã','Banana','Cenoura','Uva'],ans:2,exp:'Cenoura é legume, as outras são frutas!'},
+  {q:'João é mais alto que Pedro. Pedro é mais alto que Ana. Quem é mais baixo?',opts:['João','Pedro','Ana','São iguais'],ans:2,exp:'João>Pedro>Ana, então Ana é a mais baixa!'},
+  {q:'2 → 4 → 6 → 8 → ?',opts:['9','10','11','12'],ans:1,exp:'Soma 2 a cada vez: 8+2=10!'},
+  {q:'Se hoje é terça-feira, que dia será amanhã?',opts:['Segunda','Quarta','Quinta','Sexta'],ans:1,exp:'Depois da terça vem a quarta!'},
+  {q:'Qual forma tem 4 lados iguais e 4 ângulos retos?',opts:['Triângulo','Retângulo','Quadrado','Círculo'],ans:2,exp:'O quadrado tem 4 lados iguais e 4 ângulos retos!'},
+  {q:'Maria tem 3 irmãos e 2 irmãs. Quantos irmãos tem ela no total?',opts:['3','4','5','6'],ans:2,exp:'3 irmãos + 2 irmãs = 5 no total!'},
+  {q:'Qual sequência está em ordem crescente?',opts:['5,3,1','1,3,5','3,1,5','5,1,3'],ans:1,exp:'1, 3, 5 — cada número é maior que o anterior!'},
+  {q:'🟦🟦🟥🟦🟦🟥 — Qual vem a seguir?',opts:['🟥','🟦','🟡','🟩'],ans:1,exp:'O padrão é: azul, azul, vermelho — vem azul!'},
+  {q:'Um caracol sobe 3 degraus de dia e desce 1 à noite. Em quantos dias chega ao 7º degrau?',opts:['3','4','5','6'],ans:1,exp:'Dia1=2, Dia2=4, Dia3=6, Dia4=7. São 4 dias!'},
+  {q:'Qual é o próximo número? 1, 4, 9, 16, ___',opts:['20','24','25','30'],ans:2,exp:'São quadrados perfeitos: 1²,2²,3²,4²,5²=25!'},
+  {q:'Ana tem mais bolas que Bia. Bia tem mais que Cris. Quem tem menos bolas?',opts:['Ana','Bia','Cris','Todas iguais'],ans:2,exp:'Ana>Bia>Cris, então Cris tem menos!'},
+  {q:'Qual letra vem a seguir? A, C, E, G, ___',opts:['H','I','J','K'],ans:1,exp:'Pula uma letra a cada vez: A,C,E,G,I!'},
+  {q:'Se 1 caixa tem 6 ovos, quantos ovos têm 3 caixas?',opts:['12','15','18','21'],ans:2,exp:'3×6=18 ovos!'},
+  {q:'Que número está no meio entre 10 e 20?',opts:['13','14','15','16'],ans:2,exp:'O número do meio é 15!'},
+  {q:'🔺🔺🔵🔺🔺🔵 — Qual vem a seguir?',opts:['🔵','🔺','🟡','🔴'],ans:0,exp:'Padrão: triângulo, triângulo, círculo — vem círculo!'},
+  {q:'Pedro tem 12 figurinhas. Deu metade para o amigo. Com quantas ficou?',opts:['4','5','6','7'],ans:2,exp:'Metade de 12 é 6!'},
+  {q:'Qual palavra não pertence? Cadeira, Mesa, Sofá, Maçã',opts:['Cadeira','Mesa','Sofá','Maçã'],ans:3,exp:'Maçã é fruta. Os outros são móveis!'}
+],
+math:[
+  {q:'15 + 8 = ?',opts:['21','22','23','24'],ans:2,exp:'15+8=23!'},
+  {q:'20 - 7 = ?',opts:['11','12','13','14'],ans:2,exp:'20-7=13!'},
+  {q:'4 × 3 = ?',opts:['10','11','12','13'],ans:2,exp:'4×3=12!'},
+  {q:'Metade de 18 = ?',opts:['7','8','9','10'],ans:2,exp:'18÷2=9!'},
+  {q:'Pizza com 8 fatias. 3 pessoas comem 2 cada. Sobram?',opts:['1','2','3','4'],ans:1,exp:'3×2=6 comidas. 8-6=2 sobram!'},
+  {q:'Qual é o dobro de 7?',opts:['12','13','14','15'],ans:2,exp:'2×7=14!'},
+  {q:'36 ÷ 6 = ?',opts:['5','6','7','8'],ans:1,exp:'36÷6=6!'},
+  {q:'25 + 17 = ?',opts:['40','41','42','43'],ans:2,exp:'25+17=42!'},
+  {q:'50 - 23 = ?',opts:['25','26','27','28'],ans:2,exp:'50-23=27!'},
+  {q:'5 × 5 = ?',opts:['20','23','25','30'],ans:2,exp:'5×5=25!'},
+  {q:'Qual número é par?',opts:['13','17','22','29'],ans:2,exp:'22 é par porque termina em número par!'},
+  {q:'Tem 3 caixas com 7 lápis cada. Total de lápis?',opts:['18','19','20','21'],ans:3,exp:'3×7=21 lápis!'},
+  {q:'Qual fração representa metade?',opts:['1/3','1/4','1/2','2/3'],ans:2,exp:'1/2 é a metade!'},
+  {q:'100 - 45 = ?',opts:['54','55','56','57'],ans:1,exp:'100-45=55!'},
+  {q:'Que número vem depois de 99?',opts:['90','100','101','110'],ans:1,exp:'99+1=100!'},
+  {q:'Qual é o triplo de 6?',opts:['12','15','18','21'],ans:2,exp:'3×6=18!'},
+  {q:'13 + 14 + 2 = ?',opts:['27','28','29','30'],ans:2,exp:'13+14+2=29!'},
+  {q:'Numa turma há 30 alunos. 12 são meninas. Quantos são meninos?',opts:['16','17','18','19'],ans:2,exp:'30-12=18 meninos!'},
+  {q:'Qual resultado é maior: 3×8 ou 5×5?',opts:['3×8=24','5×5=25','São iguais','Impossível saber'],ans:1,exp:'3×8=24 e 5×5=25. Então 5×5 é maior!'}
+],
+memory:[
+  {q:'🐶🐱🐸🦋 — Qual NÃO estava na lista?',opts:['Cachorro','Gato','Pássaro','Sapo'],ans:2,exp:'Pássaro não estava! A lista era cachorro, gato, sapo e borboleta.'},
+  {q:'Cor que NÃO tem na bandeira do Brasil?',opts:['Verde','Amarelo','Azul','Vermelho'],ans:3,exp:'A bandeira do Brasil não tem vermelho!'},
+  {q:'Dia que vem depois de quarta-feira?',opts:['Terça','Quinta','Sexta','Segunda'],ans:1,exp:'Depois da quarta vem a quinta!'},
+  {q:'Quantas letras tem a palavra ESCOLA?',opts:['5','6','7','8'],ans:1,exp:'E-S-C-O-L-A = 6 letras!'},
+  {q:'Qual fruta é amarela por fora?',opts:['Morango','Melancia','Banana','Uva'],ans:2,exp:'A banana é amarela por fora!'},
+  {q:'Quantos dias tem uma semana?',opts:['5','6','7','8'],ans:2,exp:'A semana tem 7 dias!'},
+  {q:'Qual é o primeiro mês do ano?',opts:['Fevereiro','Março','Janeiro','Abril'],ans:2,exp:'Janeiro é o primeiro mês do ano!'},
+  {q:'Quantas cores tem o arco-íris?',opts:['5','6','7','8'],ans:2,exp:'O arco-íris tem 7 cores!'},
+  {q:'Que animal faz "miau"?',opts:['Cachorro','Gato','Vaca','Galinha'],ans:1,exp:'O gato faz "miau"!'},
+  {q:'Qual é a capital do Brasil?',opts:['São Paulo','Rio de Janeiro','Brasília','Salvador'],ans:2,exp:'Brasília é a capital do Brasil!'},
+  {q:'Quantos meses tem um ano?',opts:['10','11','12','13'],ans:2,exp:'Um ano tem 12 meses!'},
+  {q:'Qual destes animais bota ovos?',opts:['Cachorro','Golfinho','Galinha','Gato'],ans:2,exp:'A galinha bota ovos!'},
+  {q:'Qual cor mistura amarelo e azul?',opts:['Roxo','Verde','Laranja','Rosa'],ans:1,exp:'Amarelo + azul = verde!'},
+  {q:'Quantas patas tem uma aranha?',opts:['4','6','8','10'],ans:2,exp:'A aranha tem 8 patas!'},
+  {q:'Qual planeta fica mais perto do Sol?',opts:['Terra','Vênus','Mercúrio','Marte'],ans:2,exp:'Mercúrio é o planeta mais próximo do Sol!'},
+  {q:'Quantas horas tem um dia?',opts:['12','20','24','48'],ans:2,exp:'Um dia tem 24 horas!'},
+  {q:'Que instrumento tem teclas pretas e brancas?',opts:['Violão','Flauta','Piano','Tambor'],ans:2,exp:'O piano tem teclas pretas e brancas!'},
+  {q:'Qual animal é o rei da selva?',opts:['Tigre','Leão','Elefante','Gorila'],ans:1,exp:'O leão é chamado de rei da selva!'},
+  {q:'Quantos continentes tem a Terra?',opts:['4','5','6','7'],ans:3,exp:'A Terra tem 7 continentes!'}
+],
+science:[
+  {q:'Fotossíntese precisa de:',opts:['Suco e açúcar','Luz solar e água','Sal e areia','Chuva e gelo'],ans:1,exp:'As plantas usam luz solar e água para fazer fotossíntese!'},
+  {q:'Maior planeta do Sistema Solar?',opts:['Terra','Marte','Júpiter','Saturno'],ans:2,exp:'Júpiter é o maior planeta!'},
+  {q:'Água a 100°C vira:',opts:['Gelo','Vapor','Mel','Igual'],ans:1,exp:'A 100°C a água vira vapor!'},
+  {q:'Qual é mamífero?',opts:['Cobra','Sapo','Golfinho','Papagaio'],ans:2,exp:'O golfinho é mamífero — amamenta filhotes!'},
+  {q:'Luz da Lua vem de:',opts:['Ela mesma','Reflexo do Sol','Terra','Estrelas'],ans:1,exp:'A Lua reflete a luz do Sol!'},
+  {q:'Qual órgão bombeia o sangue pelo corpo?',opts:['Pulmão','Estômago','Coração','Fígado'],ans:2,exp:'O coração bombeia o sangue!'},
+  {q:'De que é feito o ar que respiramos principalmente?',opts:['Oxigênio','Nitrogênio','CO₂','Hidrogênio'],ans:1,exp:'O ar é composto principalmente de nitrogênio (78%)!'},
+  {q:'O que os pulmões fazem?',opts:['Digerem comida','Filtram sangue','Respiram oxigênio','Produzem energia'],ans:2,exp:'Os pulmões respiram e trocam gases!'},
+  {q:'Que força faz objetos caírem?',opts:['Magnetismo','Gravidade','Vento','Atrito'],ans:1,exp:'A gravidade puxa os objetos para baixo!'},
+  {q:'Qual estado da água é sólido?',opts:['Vapor','Líquido','Gelo','Nuvem'],ans:2,exp:'O gelo é a forma sólida da água!'},
+  {q:'Quantos ossos tem o corpo humano adulto (aproximadamente)?',opts:['106','206','306','406'],ans:1,exp:'O corpo humano adulto tem cerca de 206 ossos!'},
+  {q:'O que as plantas liberam durante a fotossíntese?',opts:['CO₂','Nitrogênio','Oxigênio','Vapor'],ans:2,exp:'As plantas liberam oxigênio durante a fotossíntese!'},
+  {q:'Qual animal vive mais tempo?',opts:['Cachorro','Elefante','Tartaruga','Leão'],ans:2,exp:'Tartarugas podem viver mais de 150 anos!'},
+  {q:'O que é a clorofila?',opts:['Um animal','Pigmento verde das plantas','Um mineral','Um planeta'],ans:1,exp:'A clorofila é o pigmento verde das plantas!'},
+  {q:'Qual sentido usamos para ouvir?',opts:['Visão','Olfato','Audição','Tato'],ans:2,exp:'A audição é o sentido que usamos para ouvir!'},
+  {q:'Que tipo de rocha vem de vulcões?',opts:['Sedimentar','Metamórfica','Ígnea','Calcária'],ans:2,exp:'Rocha ígnea vem do magma dos vulcões!'},
+  {q:'Qual é o maior animal terrestre?',opts:['Girafa','Rinoceronte','Elefante','Hipopótamo'],ans:2,exp:'O elefante africano é o maior animal terrestre!'},
+  {q:'O que é a evaporação?',opts:['Água virando gelo','Água virando vapor','Chuva caindo','Neve derretendo'],ans:1,exp:'Evaporação é quando a água vira vapor!'},
+  {q:'Quantos planetas tem o Sistema Solar?',opts:['7','8','9','10'],ans:1,exp:'O Sistema Solar tem 8 planetas!'}
+],
+geo:[
+  {q:'Capital do Brasil?',opts:['São Paulo','Rio de Janeiro','Brasília','Salvador'],ans:2,exp:'Brasília é a capital federal do Brasil!'},
+  {q:'Maior país do mundo em área?',opts:['Brasil','China','EUA','Rússia'],ans:3,exp:'A Rússia é o maior país do mundo!'},
+  {q:'Rio Amazonas: em qual continente?',opts:['África','Europa','América do Sul','Ásia'],ans:2,exp:'O Rio Amazonas fica na América do Sul!'},
+  {q:'Continente com maior população?',opts:['Europa','América','África','Ásia'],ans:3,exp:'A Ásia tem mais de 4 bilhões de pessoas!'},
+  {q:'Oceano que banha a costa do Brasil?',opts:['Pacífico','Atlântico','Índico','Ártico'],ans:1,exp:'O Oceano Atlântico banha o Brasil!'},
+  {q:'Qual é o maior continente do mundo?',opts:['África','América','Europa','Ásia'],ans:3,exp:'A Ásia é o maior continente do mundo!'},
+  {q:'Qual país tem a maior população do mundo?',opts:['Brasil','EUA','Índia','China'],ans:2,exp:'A Índia passou a China e tem a maior população!'},
+  {q:'Onde fica o Deserto do Saara?',opts:['Ásia','América','África','Europa'],ans:2,exp:'O Saara fica no norte da África!'},
+  {q:'Qual é o menor continente do mundo?',opts:['Europa','Oceania','Antártida','América'],ans:1,exp:'A Oceania é o menor continente!'},
+  {q:'Qual é o rio mais extenso do mundo?',opts:['Amazonas','Nilo','Yangtzé','Mississipi'],ans:1,exp:'O Nilo é considerado o rio mais longo do mundo!'},
+  {q:'Em que continente fica o Brasil?',opts:['África','Europa','América do Sul','Ásia'],ans:2,exp:'O Brasil fica na América do Sul!'},
+  {q:'Qual é o maior oceano do mundo?',opts:['Atlântico','Índico','Ártico','Pacífico'],ans:3,exp:'O Oceano Pacífico é o maior do mundo!'},
+  {q:'Que país fica ao norte do Brasil?',opts:['Argentina','Bolívia','Venezuela','Peru'],ans:2,exp:'A Venezuela faz fronteira ao norte do Brasil!'},
+  {q:'Qual é a capital da França?',opts:['Londres','Roma','Paris','Madri'],ans:2,exp:'Paris é a capital da França!'},
+  {q:'Em que país fica a Torre Eiffel?',opts:['Itália','Espanha','França','Portugal'],ans:2,exp:'A Torre Eiffel fica em Paris, na França!'},
+  {q:'Qual é a montanha mais alta do mundo?',opts:['K2','Monte Everest','Kilimanjaro','Aconcágua'],ans:1,exp:'O Monte Everest é a montanha mais alta do mundo!'},
+  {q:'Quantos países fazem fronteira com o Brasil?',opts:['7','8','9','10'],ans:3,exp:'O Brasil faz fronteira com 10 países!'},
+  {q:'Qual é o menor país do mundo?',opts:['Monaco','San Marino','Vaticano','Liechtenstein'],ans:2,exp:'O Vaticano é o menor país do mundo!'},
+  {q:'Em que hemisfério fica a maior parte do Brasil?',opts:['Norte','Sul','Leste','Oeste'],ans:1,exp:'A maior parte do Brasil fica no hemisfério Sul!'}
+],
+pt:[
+  {q:'Plural de "pão"?',opts:['Pãos','Pães','Pãoes','Pãs'],ans:1,exp:'O plural de pão é pães!'},
+  {q:'Qual está escrita corretamente?',opts:['Excessão','Exeção','Exceção','Exessão'],ans:2,exp:'A forma correta é exceção!'},
+  {q:'Sílabas de "borboleta"?',opts:['3','4','5','6'],ans:1,exp:'Bor-bo-le-ta = 4 sílabas!'},
+  {q:'Qual é vogal?',opts:['B','P','E','T'],ans:2,exp:'As vogais são A, E, I, O, U!'},
+  {q:'Feminino de "leão"?',opts:['Leãoa','Leona','Leã','Leoa'],ans:3,exp:'O feminino de leão é leoa!'},
+  {q:'Qual é o plural de "mão"?',opts:['Mãos','Mões','Mães','Mões'],ans:0,exp:'O plural de mão é mãos!'},
+  {q:'Que tipo de palavra é "correr"?',opts:['Substantivo','Adjetivo','Verbo','Advérbio'],ans:2,exp:'Correr é um verbo — indica ação!'},
+  {q:'Qual é o antônimo (contrário) de "frio"?',opts:['Gelado','Quente','Morno','Úmido'],ans:1,exp:'O contrário de frio é quente!'},
+  {q:'Quantas sílabas tem "macarrão"?',opts:['2','3','4','5'],ans:2,exp:'Ma-car-rão = 3 sílabas!'},
+  {q:'Qual palavra está no plural?',opts:['Livro','Casa','Árvores','Menino'],ans:2,exp:'Árvores está no plural!'},
+  {q:'O que é um sinônimo?',opts:['Palavra com sentido contrário','Palavra com sentido parecido','Plural de uma palavra','Verbo no passado'],ans:1,exp:'Sinônimo é uma palavra com sentido parecido!'},
+  {q:'Qual é o plural de "lápis"?',opts:['Lápises','Lápiss','Lápis','Lápises'],ans:2,exp:'Lápis não muda no plural — continua lápis!'},
+  {q:'Que sinal indica uma pergunta?',opts:['Ponto final','Ponto de exclamação','Ponto de interrogação','Vírgula'],ans:2,exp:'O ponto de interrogação (?) indica pergunta!'},
+  {q:'Qual é o feminino de "ator"?',opts:['Atora','Atore','Atriz','Atress'],ans:2,exp:'O feminino de ator é atriz!'},
+  {q:'Quantas sílabas tem "escola"?',opts:['2','3','4','5'],ans:1,exp:'Es-co-la = 3 sílabas!'},
+  {q:'Qual palavra rima com "amor"?',opts:['Mesa','Flor','Livro','Casa'],ans:1,exp:'Amor rima com flor!'},
+  {q:'Que tipo de palavra é "bonito"?',opts:['Substantivo','Verbo','Adjetivo','Pronome'],ans:2,exp:'Bonito é um adjetivo — descreve algo!'},
+  {q:'Qual é o plural de "animal"?',opts:['Animais','Animals','Animales','Animáis'],ans:0,exp:'O plural de animal é animais!'},
+  {q:'Qual palavra tem acento?',opts:['Sala','Cafe','Avó','Amor'],ans:2,exp:'Avó tem acento agudo!'}
+],
+en:[
+  {q:'"Cachorro" in English?',opts:['Cat','Dog','Bird','Fish'],ans:1,exp:'Dog = cachorro!'},
+  {q:'Color of the sky?',opts:['Red','Green','Blue','Yellow'],ans:2,exp:'The sky is blue = azul!'},
+  {q:'How many days in a week?',opts:['Five','Six','Seven','Eight'],ans:2,exp:'Seven days in a week!'},
+  {q:'"Good morning" em português?',opts:['Boa tarde','Boa noite','Bom dia','Olá'],ans:2,exp:'Good morning = Bom dia!'},
+  {q:'Opposite of "big"?',opts:['Fast','Small','Hot','Happy'],ans:1,exp:'Small is the opposite of big!'},
+  {q:'What is "gato" in English?',opts:['Dog','Bird','Cat','Fish'],ans:2,exp:'Cat = gato!'},
+  {q:'What color is the sun?',opts:['Blue','Green','Red','Yellow'],ans:3,exp:'The sun is yellow = amarelo!'},
+  {q:'How do you say "obrigado"?',opts:['Sorry','Please','Thank you','Hello'],ans:2,exp:'Thank you = obrigado!'},
+  {q:'What number comes after nine?',opts:['Eight','Eleven','Ten','Twelve'],ans:2,exp:'Ten comes after nine!'},
+  {q:'What is "casa" in English?',opts:['Car','House','Tree','Book'],ans:1,exp:'House = casa!'},
+  {q:'What do we drink when thirsty?',opts:['Milk','Water','Juice','Soda'],ans:1,exp:'Water = água, good for thirst!'},
+  {q:'What is "escola" in English?',opts:['Hospital','Park','School','Market'],ans:2,exp:'School = escola!'},
+  {q:'How do you say "por favor"?',opts:['Sorry','Hello','Please','Goodbye'],ans:2,exp:'Please = por favor!'},
+  {q:'What color is the grass?',opts:['Blue','Red','Green','Purple'],ans:2,exp:'Grass is green = verde!'},
+  {q:'What is "livro" in English?',opts:['Notebook','Pen','Book','Bag'],ans:2,exp:'Book = livro!'},
+  {q:'How many months are in a year?',opts:['Ten','Eleven','Twelve','Thirteen'],ans:2,exp:'Twelve months in a year!'},
+  {q:'What is "amigo" in English?',opts:['Enemy','Brother','Friend','Teacher'],ans:2,exp:'Friend = amigo!'},
+  {q:'What do we use to write?',opts:['Fork','Pen','Spoon','Cup'],ans:1,exp:'Pen = caneta, used to write!'},
+  {q:'How do you say "adeus"?',opts:['Hello','Good morning','Please','Goodbye'],ans:3,exp:'Goodbye = adeus!'}
+],
+writing:[
+  {prompt:'Escreva 3 frases sobre o que você fez no fim de semana. Use "primeiro", "depois" e "por fim".',tip:'💡 Pense em uma coisa de manhã, uma à tarde e uma à noite.',minWords:15},
+  {prompt:'Descreva seu animal favorito. Fale como ele é, onde vive, o que come e por que você gosta dele.',tip:'💡 Comece com "Meu animal favorito é..." e use adjetivos como grande, pequeno, colorido, peludo.',minWords:20},
+  {prompt:'Imagine que você encontrou um tesouro escondido. Escreva o que estava dentro e o que você fez com ele.',tip:'💡 Use verbos no passado: encontrei, abri, vi, decidi...',minWords:20},
+  {prompt:'Escreva uma pequena história com começo, meio e fim sobre uma criança que ajudou alguém.',tip:'💡 Começo = apresente o personagem. Meio = o problema. Fim = como resolveu.',minWords:25},
+  {prompt:'Escreva uma carta para um amigo imaginário contando sobre sua escola, seus professores e sua turma.',tip:'💡 Cartas começam com "Querido(a)..." e terminam com "Com carinho," + seu nome.',minWords:25}
+]
+};
+
+let user=null,state={cat:null,idx:0,pts:0,streak:0,done:0,answered:false,completedCats:{}};
+
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+function login(){auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>alert('Erro: '+e.message));}
+function doLogout(){auth.signOut();}
+
+auth.onAuthStateChanged(async u=>{
+  hide('loading');
+  if(u){user=u;hide('login');show('main');renderTopbar();await loadProgress();renderCats();renderQuestion();}
+  else{user=null;hide('main');show('login');}
+});
+
+async function loadProgress(){
+  try{const s=await db.collection('users').doc(user.uid).get();if(s.exists){const d=s.data();state.pts=d.pts||0;state.done=d.done||0;state.completedCats=d.completedCats||{};}}catch(e){}
+  updateScoreUI();
+}
+
+async function saveProgress(){
+  if(!user)return;
+  try{await db.collection('users').doc(user.uid).set({name:user.displayName||'Jogador',photoURL:user.photoURL||'',pts:state.pts,done:state.done,completedCats:state.completedCats,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});}catch(e){}
+}
+
+async function loadRanking(){
+  try{
+    const s=await db.collection('users').orderBy('pts','desc').limit(10).get();
+    const medals=['🥇','🥈','🥉'];let html='';let i=0;
+    s.forEach(d=>{
+      const data=d.data(),isMe=d.id===user?.uid;
+      const av=data.photoURL?`<img class="rav" src="${data.photoURL}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`:`<div class="rav">👤</div>`;
+      html+=`<div class="rank-row${isMe?' me':''}">${av}<span class="rpos">${medals[i]||(i+1)+'º'}</span><div class="rinfo"><div class="rname">${data.name||'Jogador'}${isMe?' (você)':''}</div><div class="rsub">${Object.keys(data.completedCats||{}).length} categorias</div></div><div class="rpts">${data.pts||0} pts</div></div>`;
+      i++;
+    });
+    document.getElementById('rlist').innerHTML=html||'<p style="color:#aaa;text-align:center;padding:1rem">Seja o primeiro! 🚀</p>';
+  }catch(e){}
+}
+
+async function uploadFoto(input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>3*1024*1024){alert('Foto maior que 3MB. Use uma menor.');return;}
+  const prog=document.getElementById('uprogress');prog.textContent='Enviando foto...';
+  try{
+    const ref=storage.ref('avatars/'+user.uid);
+    const task=ref.put(file);
+    task.on('state_changed',snap=>{prog.textContent='Enviando... '+Math.round(snap.bytesTransferred/snap.totalBytes*100)+'%';});
+    await task;
+    const url=await ref.getDownloadURL();
+    await user.updateProfile({photoURL:url});
+    await db.collection('users').doc(user.uid).set({photoURL:url},{merge:true});
+    prog.textContent='✅ Foto atualizada!';
+    renderTopbar();renderPerfil();
+    setTimeout(()=>{prog.textContent='';},3000);
+  }catch(e){prog.textContent='Erro ao enviar.';}
+  input.value='';
+}
+
+function renderTopbar(){
+  const av=document.getElementById('uav');
+  av.innerHTML=user.photoURL?`<img src="${user.photoURL}" style="width:36px;height:36px;border-radius:50%;border:2px solid #7F77DD;object-fit:cover;">`:`<div style="width:36px;height:36px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid #7F77DD;">👤</div>`;
+  document.getElementById('uname').textContent=user.displayName||'Jogador';
+  document.getElementById('uemail').textContent=user.email||'';
+}
+
+function showTab(tab){
+  ['quiz','ranking','perfil'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['quiz','ranking','perfil'][i]===tab));
+  if(tab==='ranking')loadRanking();
+  if(tab==='perfil')renderPerfil();
+}
+
+function renderPerfil(){
+  const pav=document.getElementById('pav');
+  if(user.photoURL)pav.outerHTML=`<img id="pav" src="${user.photoURL}" style="width:80px;height:80px;border-radius:50%;border:3px solid #7F77DD;object-fit:cover;cursor:pointer;" onclick="document.getElementById('foto-input').click()">`;
+  else pav.outerHTML=`<div id="pav" style="width:80px;height:80px;border-radius:50%;background:#EEEDFE;display:flex;align-items:center;justify-content:center;font-size:48px;border:3px solid #7F77DD;cursor:pointer;" onclick="document.getElementById('foto-input').click()">👤</div>`;
+  document.getElementById('pname').textContent=user.displayName||'Jogador';
+  document.getElementById('pemail').textContent=user.email||'';
+  document.getElementById('ppts').textContent=state.pts;
+  document.getElementById('pdone').textContent=state.done;
+  const cats=Object.keys(state.completedCats);
+  document.getElementById('pcats').textContent=cats.length;
+  document.getElementById('pcatsdone').innerHTML=cats.length?cats.map(c=>{const cat=CATS.find(x=>x.id===c);return cat?`<span class="pcatdone">${cat.icon} ${cat.label}</span>`:''}).join(''):'<span style="color:#aaa;font-size:13px">Nenhuma ainda 💪</span>';
+}
+
+function renderCats(){
+  document.getElementById('cats').innerHTML=CATS.map(c=>{
+    const done=state.completedCats[c.id];
+    return`<button class="cat${state.cat===c.id?' active':''}${done?' done':''}" onclick="selectCat('${c.id}')">${done?'<span class="ck">✓</span>':''}<span class="ci">${c.icon}</span>${c.label}</button>`;
+  }).join('');
+}
+
+function selectCat(id){state.cat=id;state.idx=0;state.answered=false;renderCats();renderQuestion();}
+
+function renderQuestion(){
+  const area=document.getElementById('quiz');
+  if(!state.cat){area.innerHTML='<p style="text-align:center;color:#888;padding:2rem 0;font-size:15px">👆 Escolha uma categoria!</p>';return;}
+  const qs=Q[state.cat];if(state.idx>=qs.length){renderResult();return;}
+  document.getElementById('prog').style.width=Math.round(state.idx/qs.length*100)+'%';
+  state.cat==='writing'?renderWriting(qs[state.idx]):renderMCQ(qs[state.idx]);
+}
+
+function renderMCQ(q){
+  const cat=CATS.find(c=>c.id===state.cat);
+  document.getElementById('quiz').innerHTML=`<div class="card"><div class="qmeta"><span>${cat.icon} ${cat.label}</span><span>${state.idx+1}/${Q[state.cat].length}</span></div><div class="qtxt">${q.q}</div><div class="opts">${q.opts.map((o,i)=>`<button class="opt" id="o${i}" onclick="answer(${i})">${o}</button>`).join('')}</div><div class="fb" id="fb"></div><button class="nxt" id="nxt" onclick="next()">Próxima →</button></div>`;
+}
+
+function renderWriting(q){
+  document.getElementById('quiz').innerHTML=`<div class="card"><div class="qmeta"><span>✏️ Redação</span><span>${state.idx+1}/${Q.writing.length}</span></div><div class="qtxt">${q.prompt}</div><div class="tip">${q.tip}</div><textarea class="wtxt" id="wtxt" placeholder="Escreva aqui..." oninput="wcount(${q.minWords})"></textarea><div class="wcount" id="wcount">0 palavras (mín. ${q.minWords})</div><div class="ltxt" id="ltxt">✨ Avaliando...</div><div class="aifb" id="aifb"></div><button class="sbtn" id="sbtn" onclick="submitW()" disabled>Enviar ✨</button><button class="nxt" id="nxt" onclick="next()">Próxima →</button></div>`;
+}
+
+function wcount(min){const t=document.getElementById('wtxt').value.trim();const w=t?t.split(/\s+/).length:0;document.getElementById('wcount').textContent=w+' palavra'+(w!==1?'s':'')+(w<min?' (mín. '+min+')':'  ✓');document.getElementById('sbtn').disabled=w<min;}
+
+async function submitW(){
+  const txt=document.getElementById('wtxt').value.trim();const q=Q.writing[state.idx];
+  document.getElementById('sbtn').disabled=true;document.getElementById('ltxt').style.display='block';document.getElementById('wtxt').disabled=true;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:'Você é um professor carinhoso para crianças de 7-8 anos. Aponte 2 pontos positivos e 1 sugestão simples. Use emojis. Máximo 5 frases curtas.',messages:[{role:'user',content:'Tema: "'+q.prompt+'"\nRedação: "'+txt+'"'}]})});
+    const d=await r.json();document.getElementById('ltxt').style.display='none';
+    const fb=document.getElementById('aifb');fb.className='aifb show';fb.innerHTML='<strong>✨ Correção:</strong><br><br>'+(d.content?.[0]?.text||'Muito bem!').replace(/\n/g,'<br>');
+  }catch{document.getElementById('ltxt').style.display='none';document.getElementById('aifb').className='aifb show';document.getElementById('aifb').innerHTML='✅ Parabéns! Continue praticando!';}
+  state.pts+=15;state.done++;updateScoreUI();await saveProgress();document.getElementById('nxt').className='nxt show';
+}
+
+async function answer(i){
+  if(state.answered)return;state.answered=true;const q=Q[state.cat][state.idx];
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);document.getElementById('o'+q.ans).classList.add('ok');state.done++;
+  if(i===q.ans){document.getElementById('o'+i).classList.add('ok');state.pts+=10;state.streak++;document.getElementById('fb').className='fb show ok';document.getElementById('fb').textContent='✓ Correto! '+q.exp;}
+  else{document.getElementById('o'+i).classList.add('no');state.streak=0;document.getElementById('fb').className='fb show no';document.getElementById('fb').textContent='✗ Quase! '+q.exp;}
+  updateScoreUI();await saveProgress();document.getElementById('nxt').className='nxt show';
+}
+
+function updateScoreUI(){document.getElementById('pts').textContent=state.pts;document.getElementById('streak').textContent=state.streak;document.getElementById('done').textContent=state.done;}
+function next(){state.idx++;state.answered=false;renderQuestion();}
+
+async function renderResult(){
+  document.getElementById('prog').style.width='100%';const cat=CATS.find(c=>c.id===state.cat);
+  state.completedCats[state.cat]=true;await saveProgress();renderCats();
+  document.getElementById('quiz').innerHTML=`<div class="card result"><div style="font-size:48px;margin-bottom:12px">🏆</div><h2>Parabéns!</h2><p>Você terminou <strong>${cat.label}</strong>!<br>Total: <strong>${state.pts} pontos</strong></p><button class="rbtn" onclick="restart()">Outra categoria</button></div>`;
+}
+
+function restart(){state.cat=null;state.idx=0;state.answered=false;renderCats();renderQuestion();}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
